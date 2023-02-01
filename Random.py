@@ -1,93 +1,70 @@
-#! /usr/bin/env python
+! /usr/bin/env python
 
-# imports of external packages to use in our code 
-import sys
-import math
-import numpy as np
-import matplotlib.pyplot as plt
+ import math
+ import numpy as np
 
-#import our Random class from /Random.py file
-sys.path.append(".")
-from MySort import MySort
-#import sorting
+ #################
+ # Random class
+ #################
+ # class that can generate random numbers
+ class Random:
+     """A random number generator class"""
 
-# main function for our CookieAnalysis Python code
-if __name__ == "__main__":
-   
-    haveInput = False
+     # initialization method for Random class
+     def __init__(self, seed = 5555):
+         self.seed = seed
+         self.m_v = np.uint64(4101842887655102017)
+         self.m_w = np.uint64(1)
+         self.m_u = np.uint64(1)
 
-    for i in range(1,len(sys.argv)):
-        if sys.argv[i] == '-h' or sys.argv[i] == '--help':
-            continue
+         self.m_u = np.uint64(self.seed) ^ self.m_v
+         self.int64()
+         self.m_v = self.m_u
+         self.int64()
+         self.m_w = self.m_v
+         self.int64()
 
-        InputFile = sys.argv[i]
-        haveInput = True
-    
-    if '-h' in sys.argv or '--help' in sys.argv or not haveInput:
-        print ("Usage: %s [options] [input file]" % sys.argv[0])
-        print ("  options:")
-        print ("   --help(-h)          print options")
-        print
-        sys.exit(1)
-    
-    Nmeas = 1
-    times = []
-    times_avg = []
+     # function returns a random 64 bit integer
+     def int64(self):
+         with np.errstate(over='ignore'):
+             self.m_u = np.uint64(self.m_u * np.uint64(2862933555777941757) + np.uint64(7046029254386353087))
+         self.m_v ^= self.m_v >> np.uint64(17)
+         self.m_v ^= self.m_v << np.uint64(31)
+         self.m_v ^= self.m_v >> np.uint64(8)
+         self.m_w = np.uint64(np.uint64(4294957665)*(self.m_w & np.uint64(0xffffffff))) + np.uint64((self.m_w >> np.uint64(32)))
+         x = np.uint64(self.m_u ^ (self.m_u << np.uint64(21)))
+         x ^= x >> np.uint64(35)
+         x ^= x << np.uint64(4)
+         with np.errstate(over='ignore'):
+             return (x + self.m_v)^self.m_w
 
-    need_rate = True
-    
-    with open(InputFile) as ifile:
-        for line in ifile:
-            if need_rate:
-                need_rate = False
-                rate = float(line)
-                continue
-            
-            lineVals = line.split()
-            Nmeas = len(lineVals)
-            t_avg = 0
-            for v in lineVals:
-                t_avg += float(v)
-                times.append(float(v))
+     # function returns a random floating point number between (0, 1) (uniform)
+     def rand(self):
+         return 5.42101086242752217E-20 * self.int64()
 
-            t_avg /= Nmeas
-            times_avg.append(t_avg)
+     # function returns a random integer (0 or 1) according to a Bernoulli distr.
+     def Bernoulli(self, p=0.5):
+         if p < 0. or p > 1.:
+             return 1
 
-    Sorter = MySort()
+         R = self.rand()
 
-    times = Sorter.DefaultSort(times)
-    times_avg = Sorter.DefaultSort(times_avg)
-    # try some other methods! see how long they take
-    # times_avg = Sorter.BubbleSort(times_avg)
-    # times_avg = Sorter.InsertionSort(times_avg)
-    # times_avg = Sorter.QuickSort(times_avg)
-   
+         if R < p:
+             return 1
+         else:
+             return 0
 
+     # function returns a random double (0 to infty) according to an exponential distribution
+     def Exponential(self, beta=1.):
+       # make sure beta is consistent with an exponential
+       if beta <= 0.:
+         beta = 1.
 
-    # Code to calculate different quantiles from sorted arrays of outcomes
-    # numpy.quantile() method
- 
-    # 1D array
-    arr = [20, 2, 7, 1, 34]
- 
-    print("Q2 quantile of arr : ", np.quantile(times, .50))
-    print("Q1 quantile of arr : ", np.quantile(arr, .25))
-    print("Q3 quantile of arr : ", np.quantile(arr, .75))
-    print("100th quantile of arr : ", np.quantile(arr, .1))
+       R = self.rand();
 
+       while R <= 0.:
+         R = self.rand()
 
+       X = -math.log(R)/beta
 
-  
-    fig1 = plt.figure()
-    # plt.plot(times,p,'o-')
-    plt.hist(times_avg, density=True, facecolor='b', alpha=0.5, label="assuming $\\mathbb{H}_0$")
-    # plt.plot(sizes,[0.0248]*len(sizes),'--r')
-    plt.grid()
-    plt.xlim(xmin=0)
-    plt.xlabel('Time')
-    plt.ylabel('Frequency of Outcomes')
-    plt.title('Distribution of Outcomes from Input File')
-
-    plt.show()
-
-    fig1.savefig('cookieplot.png')
+       return X
